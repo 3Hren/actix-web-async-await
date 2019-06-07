@@ -1,0 +1,13 @@
+[package]
+name = "actix-test"
+version = "0.1.0"
+authors = ["Evgeny Safronov <division494@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+actix-web = "1"
+actix-service = "0.4"
+serde = "1"
+serde_derive = "1"
+futures = "0.1"
+futures-util-preview = { version = "0.3.0-alpha.16", features = ["compat"] }
