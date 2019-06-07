@@ -5,7 +5,12 @@
 #[macro_use]
 extern crate serde_derive;
 
-use std::{future::Future, marker::PhantomData};
+use std::{
+    future::Future,
+    marker::PhantomData,
+    sync::atomic::{AtomicU64, Ordering},
+    sync::Arc,
+};
 
 use futures::{self, future::FutureResult, Async, Future as PrevFuture, IntoFuture, Poll};
 use futures_util::{
@@ -97,7 +102,10 @@ where
     U: Responder + 'static,
 {
     pub fn new(handler: H) -> Self {
-        AsyncHandler { handler, _phantom: PhantomData }
+        AsyncHandler {
+            handler,
+            _phantom: PhantomData,
+        }
     }
 
     pub async fn execute(handler: H, req: ServiceRequest) -> Result<ServiceResponse, Error> {
@@ -107,9 +115,7 @@ where
         let resp = handler.call(request).await;
 
         match resp.respond_to(&req).into_future().compat().await {
-            Ok(resp) => {
-                Ok(ServiceResponse::new(req, resp))
-            }
+            Ok(resp) => Ok(ServiceResponse::new(req, resp)),
             Err(err) => Err(err.into()),
         }
     }
@@ -184,9 +190,8 @@ struct InfoRequest {
 #[derive(Serialize)]
 struct InfoResponse {}
 
-#[derive(Clone)]
 struct Server {
-    id: u64,
+    id: AtomicU64,
 }
 
 impl Server {
@@ -194,9 +199,11 @@ impl Server {
         HttpResponse::Ok().finish()
     }
 
-    pub async fn info(self: Data<Self>, request: Json<InfoRequest>) -> Result<Json<InfoResponse>, Error> {
+    pub async fn info(self: Data<Arc<Self>>, request: Json<InfoRequest>) -> Result<Json<InfoResponse>, Error> {
         dbg!(&self.id);
         dbg!(&request);
+
+        self.id.fetch_add(1, Ordering::SeqCst);
 
         Ok(Json(InfoResponse {}))
     }
@@ -205,14 +212,14 @@ impl Server {
 // ================================================================================================
 
 fn main() -> std::io::Result<()> {
-    let server = Server { id: 42 };
+    let server = Arc::new(Server { id: AtomicU64::new(0) });
 
     HttpServer::new(move || {
         let server = server.clone();
         App::new().data(server).service(
             web::scope("v1")
                 .service(web::service("/ping").finish(to_async(Server::ping)))
-                .service(web::service("/info").finish(to_async(Server::info)))
+                .service(web::service("/info").finish(to_async(Server::info))),
         )
     })
     .bind("127.0.0.1:8080")?
