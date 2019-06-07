@@ -212,7 +212,7 @@ fn main() -> std::io::Result<()> {
         App::new().data(server).service(
             web::scope("v1")
                 .service(web::service("/ping").finish(to_async(Server::ping)))
-                .service(web::service("/ping").finish(to_async(Server::info)))
+                .service(web::service("/info").finish(to_async(Server::info)))
         )
     })
     .bind("127.0.0.1:8080")?
