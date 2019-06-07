@@ -1,11 +1,6 @@
 #![feature(async_await)]
 #![feature(await_macro)]
 #![feature(arbitrary_self_types)]
-#![feature(never_type)]
-#![feature(bind_by_move_pattern_guards)]
-#![feature(fn_traits)]
-#![feature(unboxed_closures)]
-#![feature(fnbox)]
 
 #[macro_use]
 extern crate serde_derive;
